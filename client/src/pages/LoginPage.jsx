@@ -1,48 +1,102 @@
-import {Link, Navigate} from "react-router-dom";
-import {useContext, useState} from "react";
-import axios from "axios";
-import {UserContext} from "../UserContext.jsx";
+import React, { useState } from 'react';
+import { Link, Navigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { GoogleLogin } from '@react-oauth/google';
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+import ProfilePage from './ProfilePage';
+import { useAuth } from '../../hooks';
+
+const LoginPage = () => {
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [redirect, setRedirect] = useState(false);
-  const {setUser} = useContext(UserContext);
-  async function handleLoginSubmit(ev) {
-    ev.preventDefault();
-    try {
-      const {data} = await axios.post('/login', {email,password});
-      setUser(data);
-      alert('Login successful');
+  const auth = useAuth();
+
+  const handleFormData = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+
+    const response = await auth.login(formData);
+    if (response.success) {
+      toast.success(response.message);
       setRedirect(true);
-    } catch (e) {
-      alert('Login failed');
+    } else {
+      toast.error(response.message);
     }
-  }
+  };
+
+  const handleGoogleLogin = async (credential) => {
+    const response = await auth.googleLogin(credential);
+    if (response.success) {
+      toast.success(response.message);
+      setRedirect(true);
+    } else {
+      toast.error(response.message);
+    }
+  };
 
   if (redirect) {
-    return <Navigate to={'/'} />
+    return <Navigate to={'/'} />;
+  }
+
+  if (auth.user) {
+    return <ProfilePage />;
   }
 
   return (
-    <div className="mt-4 grow flex items-center justify-around">
-      <div className="mb-64">
-        <h1 className="text-4xl text-center mb-4">Login</h1>
-        <form className="max-w-md mx-auto" onSubmit={handleLoginSubmit}>
-          <input type="email"
-                 placeholder="your@email.com"
-                 value={email}
-                 onChange={ev => setEmail(ev.target.value)} />
-          <input type="password"
-                 placeholder="password"
-                 value={password}
-                 onChange={ev => setPassword(ev.target.value)} />
-          <button className="primary">Login</button>
-          <div className="text-center py-2 text-gray-500">
-            Don't have an account yet? <Link className="underline text-black" to={'/register'}>Register now</Link>
-          </div>
+    <div className="mt-4 flex grow items-center justify-around p-4 md:p-0">
+      <div className="mb-40">
+        <h1 className="mb-4 text-center text-4xl">Login</h1>
+        <form className="mx-auto max-w-md" onSubmit={handleFormSubmit}>
+          <input
+            name="email"
+            type="email"
+            placeholder="your@email.com"
+            value={formData.email}
+            onChange={handleFormData}
+          />
+          <input
+            name="password"
+            type="password"
+            placeholder="password"
+            value={formData.password}
+            onChange={handleFormData}
+          />
+          <button className="primary my-4">Login</button>
         </form>
+
+        <div className="mb-4 flex w-full items-center gap-4">
+          <div className="h-0 w-1/2 border-[1px]"></div>
+          <p className="small -mt-1">or</p>
+          <div className="h-0 w-1/2 border-[1px]"></div>
+        </div>
+
+        {/* Google login button */}
+        <div className="flex h-[50px] justify-center">
+          <GoogleLogin
+            onSuccess={(credentialResponse) => {
+              handleGoogleLogin(credentialResponse.credential);
+            }}
+            onError={() => {
+              console.log('Login Failed');
+            }}
+            text="continue_with"
+            width="350"
+          />
+        </div>
+
+        <div className="py-2 text-center text-gray-500">
+          Don't have an account yet?{' '}
+          <Link className="text-black underline" to={'/register'}>
+            Register now
+          </Link>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default LoginPage;
